@@ -1,0 +1,95 @@
+---
+title: "Barcharts"
+output: html_document
+---
+
+To get the values for the plot for Cluster N: first get all the individuals in that cluster from the clusters*.txt file. 
+Then in the shapValues file, for each SNP to be displayed on the plot, take the sum of the ABSOLUTE values of the shap values OVER THE INDIVIDUALS IN THAT CLUSTER.
+
+```{r}
+library(tidyverse)
+theme_set(theme_bw())
+```
+
+```{r}
+clusters_classic <- read_delim('results/clusters_classic.txt', delim = '\t') %>% 
+  mutate(cluster = paste('Cluster', res.Best.partition))
+shap_classic <- read_delim('results/shapValues_classic.txt', delim = '\t')
+clusters_resAdj <- read_delim('results/clusters_resAdj.txt', delim = '\t') %>% 
+  mutate(cluster = paste('Cluster', res.Best.partition))
+shap_resAdj <- read_delim('results/shapValues_resAdj.txt', delim = '\t')
+
+```
+
+
+```{r}
+classic_df <- clusters_classic  %>% 
+  left_join(shap_classic) %>% 
+  pivot_longer(contains('rs')) %>% 
+  group_by(cluster, name) %>% # by cluster
+  summarise(per_cluster = mean(abs(value)), .groups = 'drop') %>% 
+  filter(per_cluster > 0.001)
+
+feat_imp_classic <- classic_df %>% 
+  ggplot(aes(x = per_cluster, y = name)) +
+  geom_col(width = 0.8) +
+  facet_wrap(~ cluster, ncol = 2) +
+  labs(x = 'Mean(|Shap values|)', y = NULL)+
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank())
+
+ggsave('figs/feat_imp_classic.pdf', feat_imp_classic,
+       width = 6, height = 3)
+```
+
+```{r}
+resadj_df <- clusters_resAdj %>% 
+  left_join(shap_resAdj) %>% 
+  pivot_longer(contains('rs')) %>% 
+  group_by(cluster, name) %>% # by cluster
+  summarise(per_cluster = mean(abs(value)), .groups = 'drop')
+
+imp_snps <- resadj_df %>% 
+  group_by(cluster) %>% 
+  top_n(5) %>% 
+  pull(name) %>% 
+  unique()
+
+# look at top 5 clusters then unite
+feat_imp_resadj <- resadj_df %>% 
+  filter(name %in% imp_snps) %>%
+  ggplot(aes(x = per_cluster, y = name)) +
+  geom_col() +
+  facet_wrap(~ cluster, ncol = 2) +
+  labs(x = 'Mean(|SHAP values|)', y = NULL) +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.spacing.x = unit(7, 'mm'),
+        plot.margin = unit(c(5.5, 15.5, 5.5, 5.5), 'pt'))
+
+ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
+       width = 7, height = 5)
+ggsave('figs/feat_imp_resadj.eps', feat_imp_resadj,
+       width = 7, height = 5)
+ggsave('figs/feat_imp_resadj.ps', feat_imp_resadj,
+       width = 7, height = 5)
+```
+
+
+```{r}
+eid_order <- shap_classic[, unique(classic_df$name)] %>% 
+  as.matrix() %>% 
+  seriation::seriate() %>%
+  seriation::get_order()
+
+shap_reordered <- shap_classic[eid_order, ] %>% 
+  mutate(row = row_number())
+```
+
+```{r}
+shap_reordered %>% 
+  pivot_longer(contains('rs')) %>%
+  ggplot(aes(y = value, x = row, color = name)) +
+  geom_line()
+```
+
