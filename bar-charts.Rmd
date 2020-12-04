@@ -51,14 +51,16 @@ feat_imp_classic <- classic_df %>%
   ggplot(aes(x = per_cluster, y = name)) +
   geom_col(width = 0.8) +
   facet_wrap(~ cluster, ncol = 2) +
-  labs(x = 'Mean(|Shap values|)', y = NULL)+
+  labs(x = 'Mean(|Shap value|)', y = NULL)+
   theme(panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank())
 feat_imp_classic
-# ggsave('figs/feat_imp_classic.pdf', feat_imp_classic,
-#        width = 6, height = 3)
-# ggsave('figs/feat_imp_classic.png', feat_imp_classic,
-#        width = 6, height = 3)
+ggsave('figs/feat_imp_classic.pdf', feat_imp_classic,
+       width = 6, height = 3)
+ggsave('figs/feat_imp_classic.ps', feat_imp_classic,
+       width = 6, height = 3)
+ggsave('figs/feat_imp_classic.png', feat_imp_classic,
+       width = 6, height = 3)
 ```
 
 ```{r}
@@ -85,21 +87,19 @@ feat_imp_resadj <- resadj_df %>%
   ggplot(aes(x = per_cluster, y = name)) +
   geom_col() +
   facet_wrap(~ cluster, ncol = 2) +
-  labs(x = 'Mean(|SHAP values|)', y = NULL) +
+  labs(x = 'Mean(|SHAP value|)', y = NULL) +
   theme(panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank(),
         panel.spacing.x = unit(7, 'mm'),
         plot.margin = unit(c(5.5, 15.5, 5.5, 5.5), 'pt'))
 
 feat_imp_resadj
-# ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
-#        width = 7, height = 5)
-# ggsave('figs/feat_imp_resadj.eps', feat_imp_resadj,
-#        width = 7, height = 5)
-# ggsave('figs/feat_imp_resadj.ps', feat_imp_resadj,
-#        width = 7, height = 5)
-# ggsave('figs/feat_imp_resadj.png', feat_imp_resadj,
-#        width = 7, height = 5)
+ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
+       width = 7, height = 5)
+ggsave('figs/feat_imp_resadj.ps', feat_imp_resadj,
+       width = 7, height = 5)
+ggsave('figs/feat_imp_resadj.png', feat_imp_resadj,
+       width = 7, height = 5)
 ```
 
 ## Classic SHAP
@@ -195,10 +195,12 @@ shap_force <- p +
     expand = expansion(0, 0), breaks = seq(0, 1400, 200)) +
   theme(panel.spacing.x = unit(0, 'mm'),
         panel.grid = element_blank()) +
-  labs(y = 'SHAP values', x = NULL)
+  labs(y = NULL, x = NULL)
 
 shap_force
 ggsave('figs/shap_force_classic.png', shap_force,
+       width = 12, height = 4)
+ggsave('figs/shap_force_classic.ps', shap_force,
        width = 12, height = 4)
 ```
 
@@ -281,10 +283,12 @@ shap_force <- p +
   scale_x_continuous(expand = expansion(0, 0)) +
   theme(panel.spacing.x = unit(0, 'mm'),
         panel.grid = element_blank()) +
-  labs(y = 'SHAP values', x = NULL)
+  labs(y = NULL, x = NULL)
 
 shap_force
 ggsave('figs/shap_force_resadj.png', shap_force,
+       width = 12, height = 4)
+ggsave('figs/shap_force_resadj.ps', shap_force,
        width = 12, height = 4)
 ```
 
