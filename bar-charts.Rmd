@@ -72,6 +72,13 @@ snps_resadj <- shap_resAdj %>%
   sort(decreasing = T) %>%
   names()
 
+snps_classic <- shap_classic %>%
+  select(contains('rs')) %>% 
+  abs() %>%
+  colMeans() %>%
+  sort(decreasing = T) %>%
+  names()
+
 # imp_snps_resadj <- shap_resAdj %>% 
 #   select(contains('rs')) %>% 
 #   abs() %>% 
@@ -138,37 +145,6 @@ shap_classic %>% select(all_of(imp_snps_classic)) %>% head(30)
 
 # base_value = -0.181025324381120
 base_value = 0.4548669
-
-
-# adj_row <- shap_reordered %>% 
-#   filter(cluster == 'Cluster 4') %>% 
-#   pull(row) %>% 
-#   rev() %>% 
-#   c(shap_reordered %>% 
-#   filter(cluster != 'Cluster 4') %>% 
-#   pull(row), .)
-
-# shap_plot <- shap_reordered %>% 
-#   pivot_longer(contains('rs')) %>% 
-#   mutate(is_imp = ifelse(name %in% imp_snps_classic, name, 'other')) %>% 
-#   group_by(eid, row, is_imp, cluster) %>% 
-#   summarise(value = sum(value), .groups = 'drop') %>% 
-#   pivot_wider(names_from = is_imp) %>% 
-#   arrange(cluster) %>% 
-#   mutate(
-#     total = base_value + other + rs4932178 + rs113028686 + rs17636091,
-#     rs17_loc = total - rs17636091,
-#     min17 = pmin(rs17_loc, total),
-#     max17 = pmax(rs17_loc, total),
-#         rs11_loc = ifelse(rs113028686 > 0, min17 - rs113028686, max17 - rs113028686),
-#     min11 = pmin(rs11_loc, min17),
-#     max11 = pmax(rs11_loc, max17),
-#     rs49_loc = ifelse(rs4932178 > 0, min11 - rs4932178, max11 - rs4932178),
-#     max_loc = pmax(rs17_loc, rs11_loc, rs49_loc, total),
-#     min_loc = pmin(rs17_loc, rs11_loc, rs49_loc, total),
-#     ) %>% 
-#   select(row, cluster, total, ends_with('loc'))
-
 
 trans_func <- function(x){
   # 1/(1 + exp(-x))
@@ -255,9 +231,6 @@ ggsave('figs/shap_force.png', shap_force,
 ## resadj SHAP
 ```{r}
 base_value_resadj = -0.011816386952043862
-# thres = 1E-3
-# shap_resAdj[abs(shap_resAdj) < thres] <- 0
-# snps_resadj = c('rs188650245', 'rs8031684', 'rs17197552', 'rs142416384')
 shap_cluster <- shap_resAdj[ , c('eid', snps_resadj)] %>% 
   left_join(clusters_resAdj)
 
@@ -274,16 +247,10 @@ clusters_resAdj[myorder$order, ] %>%
   ggplot(aes(x = 1:250, y = res.Best.partition)) +
   geom_line()
 
-shap_reordered %>% 
-  pivot_longer(contains('rs')) %>%
-  ggplot(aes(y = value, x = row, color = name)) +
-  geom_line()
-
 shap_resAdj[, snps_resadj] %>% head(30)
 
 shap_trans <- shap_reordered %>% 
   pivot_longer(contains('rs')) %>% 
-  # mutate(is_imp = ifelse(name %in% imp_snps_resadj, name, 'other')) %>% 
   group_by(eid, row, name, cluster) %>% 
   summarise(value = sum(value), .groups = 'drop') %>% 
   pivot_wider(names_from = name) %>% 
@@ -294,9 +261,7 @@ shap_plot <- shap_trans %>%
     total = select(., contains("rs")) %>% rowSums() + base_value_resadj,
     min_rs = total,
     max_rs = total
-  ) %>% 
-  # select(row, cluster, total, ends_with('loc')) %>% 
-  {.}
+  )
 
 for (snp in snps_resadj){
   snp_name <- paste0(snp, '_loc')
@@ -311,99 +276,9 @@ for (snp in snps_resadj){
     )
 }
 shap_plot <- shap_plot %>% 
-  select(row, cluster, total, ends_with('loc')) %>% 
-  # mutate(
-  #   max_loc = do.call(pmax, c(select(., ends_with('loc'), total))),
-  #   min_loc = do.call(pmin, c(select(., ends_with('loc'), total)))
-  # ) %>%
-  # mutate(next_row = row + 1) %>% 
-  {.}
+  select(row, cluster, total, ends_with('loc')) 
 
-# shap_long <- shap_plot %>%
-#   select(- snp_loc) %>% 
-#   pivot_longer(- c(row, cluster)) %>%
-#   # filter(grepl('rs|total', name)) %>%
-#   {.}
-
-# alpha_list <- list()
-# shap_rows <- sort(unique(shap_long$row))
-# for (i in shap_rows[-length(shap_rows)]){
-#   shap_pre <- shap_long %>% filter(row == i)
-#   mpre <- outer(shap_pre$value, shap_pre$value, '-')
-#   shap_post <- shap_long %>% filter(row == (i + 1))
-#   mpost <- outer(shap_post$value, shap_post$value, '-') 
-#   mpre[upper.tri(mpre)] <- 0
-#   mpost[upper.tri(mpost)] <- 0
-#   
-#    alpha_list[[i]] <- data.frame(
-#     row = i, 
-#     name = shap_pre$name,
-#     post_name = shap_post$name,
-#     minx = rowSums(mpost*mpre < 0, na.rm = TRUE)) %>% 
-#     # left_join(
-#     #   shap_post %>% rename('post_value' = value), by = 'name') %>% 
-#     # left_join(
-#     #   shap_pre %>% rename('pre_value' = value), by = 'name') %>% 
-#     {.}
-#   
-#   # alpha_list[[i]]
-# }
-# alpha_df <- do.call(rbind, alpha_list)
-
-# shap_processed <- shap_long 
-
-# shap_processed <- shap_long %>% 
-#   left_join(shap_long %>%
-#       pivot_wider(names_from = name, values_from = value) %>% 
-#       distinct(row, total)
-#   ) %>% 
-#   mutate(color = ifelse(value > total, '#D1E6FA', '#FFC3D5')) %>% 
-#   left_join(alpha_df) %>% 
-#   mutate(alpha = ifelse(minx > 0, 0.8, 0.8)) %>% 
-#   filter(row > 205)
-
-# shap_plot <- shap_plot %>% filter(row > 205)
-# shap_force <- ggplot() +
-#     # geom_line(
-#     # data = shap_processed,
-#     # mapping = aes(x = row, y = value,
-#     #               group = name, alpha = alpha, color = color),
-#     # size = 0.5) +
-#   geom_ribbon(
-#     data = shap_plot,
-#     mapping = aes(x = row, ymin = total, ymax = max_loc),
-#     fill = '#048AE6') +
-#   geom_ribbon(
-#     data = shap_plot,
-#     mapping = aes(x = row, ymin = min_loc, ymax = total),
-#     fill = '#FF0056') +
-#   # ggplot() +
-#   geom_line(
-#     data = shap_processed %>% filter(minx == 0),
-#     mapping = aes(x = row, y = value,
-#                   group = name, alpha = alpha, color = color),
-#     size = 0.5) +
-#   scale_alpha_identity() +
-#   scale_color_identity() +
-#   scale_x_continuous(expand = expansion(0, 0),
-#                      breaks = seq(0, 1400, 50)) +
-#   # facet_grid(cols = vars(cluster %>% fct_relevel(paste('Cluster', c(3, 1, 4, 2)))),
-#   #            scales = 'free', space = 'free') +
-#   # facet_grid(cols = vars(cluster),
-#   #            scales = 'free', space = 'free') +
-#   theme(panel.spacing.x = unit(0, 'mm'),
-#         panel.grid = element_blank()) +
-#   labs(y = 'SHAP values', x = NULL)
-# 
-# shap_force
-# ggsave('figs/shap_force_resadj.png', shap_force,
-#        width = 12, height = 4)
-```
-
-
-```{r}
 p <- ggplot()
-
 for (snp_name in rev(snps_resadj)){
   snp <- paste0(snp_name, '_loc')
   new_shap <- shap_plot %>%
