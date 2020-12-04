@@ -1,5 +1,5 @@
 ---
-title: "Barcharts"
+title: "SHAP Visualization"
 output: html_document
 ---
 
@@ -7,7 +7,10 @@ To get the values for the plot for Cluster N: first get all the individuals in t
 Then in the shapValues file, for each SNP to be displayed on the plot, take the sum of the ABSOLUTE values of the shap values OVER THE INDIVIDUALS IN THAT CLUSTER.
 
 ```{r}
-library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(readr)
 theme_set(theme_bw())
 ```
 
@@ -18,11 +21,24 @@ shap_classic <- read_delim('results/shapValues_classic.txt', delim = '\t')
 clusters_resAdj <- read_delim('results/clusters_resAdj.txt', delim = '\t') %>% 
   mutate(cluster = paste('Cluster', res.Best.partition))
 shap_resAdj <- read_delim('results/shapValues_resAdj.txt', delim = '\t')
-
 ```
 
 
 ```{r}
+snps_classic <- shap_classic %>%
+  select(contains('rs')) %>% 
+  abs() %>%
+  colMeans() %>%
+  sort(decreasing = T) %>%
+  names()
+
+snps_resadj <- shap_resAdj %>%
+  select(contains('rs')) %>% 
+  abs() %>%
+  colMeans() %>%
+  sort(decreasing = T) %>%
+  names()
+
 classic_df <- clusters_classic  %>% 
   left_join(shap_classic) %>% 
   pivot_longer(contains('rs')) %>% 
@@ -31,7 +47,6 @@ classic_df <- clusters_classic  %>%
   filter(per_cluster > 0.001)
 
 imp_snps_classic <- unique(classic_df$name)
-
 feat_imp_classic <- classic_df %>% 
   ggplot(aes(x = per_cluster, y = name)) +
   geom_col(width = 0.8) +
@@ -64,28 +79,6 @@ imp_snps_resadj <- resadj_df %>%
   sort(decreasing = T) %>%
   names()
 
-
-snps_resadj <- shap_resAdj %>%
-  select(contains('rs')) %>% 
-  abs() %>%
-  colMeans() %>%
-  sort(decreasing = T) %>%
-  names()
-
-snps_classic <- shap_classic %>%
-  select(contains('rs')) %>% 
-  abs() %>%
-  colMeans() %>%
-  sort(decreasing = T) %>%
-  names()
-
-# imp_snps_resadj <- shap_resAdj %>% 
-#   select(contains('rs')) %>% 
-#   abs() %>% 
-#   colMeans() %>% 
-#   sort(decreasing = T) %>% 
-#   names()
-
 # look at top 5 clusters then unite
 feat_imp_resadj <- resadj_df %>% 
   filter(name %in% imp_snps_resadj) %>%
@@ -98,6 +91,7 @@ feat_imp_resadj <- resadj_df %>%
         panel.spacing.x = unit(7, 'mm'),
         plot.margin = unit(c(5.5, 15.5, 5.5, 5.5), 'pt'))
 
+feat_imp_resadj
 # ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
 #        width = 7, height = 5)
 # ggsave('figs/feat_imp_resadj.eps', feat_imp_resadj,
@@ -110,17 +104,19 @@ feat_imp_resadj <- resadj_df %>%
 
 ## Classic SHAP
 
-```{r}
-# eid_order <- shap_classic[, unique(classic_df$name)] %>% 
-#   as.matrix() %>% 
-#   seriation::seriate() %>%
-#   seriation::get_order()
-shap_cluster <- clusters_classic %>% 
-  left_join(shap_classic)
-dist_mat <- shap_cluster %>% 
-  select(
-    # res.Best.partition, 
-    all_of(unique(classic_df$name))) %>% 
+```{r fig.width = 12, fig.height=4}
+# https://github.com/slundberg/shap/issues/29
+# base_value_classic = -0.181025324381120
+
+expit <- function(x) 1/(1+exp(-x))
+untransformed_base_value_classic = -0.181025324381120
+base_value_classic <- expit(untransformed_base_value_classic) # 0.4548669
+
+# base_value_classic = 0
+shap_cluster <- shap_classic[ , c('eid', snps_classic)] %>% 
+  left_join(clusters_classic)
+
+dist_mat <- shap_cluster[, snps_classic] %>% 
   as.matrix() %>% 
   dist(method = "euclidean")
 clustered_shap <- hclust(dist_mat^2, method = 'complete')
@@ -129,55 +125,36 @@ myorder <- seriation:::reorder.hclust(clustered_shap, dist_mat^2, method = "OLO"
 shap_reordered <- shap_cluster[myorder$order, ] %>% 
   mutate(row = row_number())
 
-shap_reordered %>% 
+clusters_classic[myorder$order, ] %>% 
   ggplot(aes(x = 1:1489, y = res.Best.partition)) +
   geom_line()
 
-# shap_reordered %>% 
-#   pivot_longer(contains('rs')) %>%
-#   ggplot(aes(y = value, x = row, color = name)) +
-#   geom_line()
-```
+shap_classic[, snps_classic] %>% head(30)
 
-
-```{r}
-shap_classic %>% select(all_of(imp_snps_classic)) %>% head(30)
-
-# base_value = -0.181025324381120
-base_value = 0.4548669
-
-trans_func <- function(x){
-  # 1/(1 + exp(-x))
-  # -log(1/x-1)
-  x
-}
-
-shap_trans <- shap_reordered %>% 
+shap_trans <- shap_reordered %>% # TODO
   pivot_longer(contains('rs')) %>% 
-  mutate(
-    value = trans_func(value),
-    is_imp = ifelse(name %in% imp_snps_classic, name, 'other')) %>% 
-  group_by(eid, row, is_imp, cluster) %>% 
+  group_by(eid, row, name, cluster) %>% 
   summarise(value = sum(value), .groups = 'drop') %>% 
-  pivot_wider(names_from = is_imp) %>% 
+  pivot_wider(names_from = name) %>% 
   arrange(cluster)
 
-
-# put other back
+# https://github.com/slundberg/shap/issues/29#issuecomment-408385378
 shap_plot <- shap_trans %>% 
   mutate(
-    total = select(., contains("rs")) %>% rowSums() + base_value,
+    original_explanation_distance = select(., contains("rs")) %>% rowSums(),
+    total = expit(original_explanation_distance + untransformed_base_value_classic),
     min_rs = total,
-    max_rs = total
-  ) %>% 
-  # select(row, cluster, total, ends_with('loc')) %>% 
-  {.}
+    max_rs = total,
+    distance_to_explain = total - base_value_classic,
+    distance_coefficient = original_explanation_distance / distance_to_explain,
+    across(starts_with('rs'), ~ .x / distance_coefficient)
+  )
 
-for (snp in imp_snps_classic){
+for (snp in snps_classic){ #TODO
   snp_name <- paste0(snp, '_loc')
   shap_plot <- shap_plot %>% 
     mutate(
-      snp_loc = ifelse(!!sym(snp) > 0, 
+      snp_loc = ifelse(!!sym(snp) >= 0, 
                        min_rs - !!sym(snp), 
                        max_rs - !!sym(snp)),
       min_rs = pmin(snp_loc, min_rs),
@@ -185,51 +162,48 @@ for (snp in imp_snps_classic){
       !!snp_name := snp_loc
     )
 }
-
 shap_plot <- shap_plot %>% 
-  select(row, cluster, total, ends_with('loc')) %>% 
-  mutate(across(ends_with('loc'), trans_func)) %>%
-  mutate(
-    # total = trans_func(total),
-    max_loc = do.call(pmax, c(select(., ends_with('loc'), total))),
-    min_loc = do.call(pmin, c(select(., ends_with('loc'), total)))
-  )
+  select(row, cluster, total, ends_with('loc'))
 
-shap_long <- shap_plot %>%
-  pivot_longer(- c(row, cluster)) %>%
-  {.}
+p <- ggplot()
+for (snp_name in rev(snps_classic)){
+  snp <- paste0(snp_name, '_loc')
+  new_shap <- shap_plot %>%
+    mutate(fill = ifelse(total < !!sym(snp), '#048AE6', '#FF0056'),
+           # color = ifelse(total < !!sym(snp), '#D1E6FA', '#FFC3D5'),
+           ymin = pmin(total, !!sym(snp)),
+           ymax = pmax(total, !!sym(snp))) %>% 
+    arrange(row)
+  rep_n <- nrow(new_shap)
 
-shap_force <- ggplot() +
-  geom_ribbon(
-    data = shap_plot, 
-    mapping = aes(x = row, ymin = total, ymax = max_loc),
-    fill = '#048AE6') +
-  geom_ribbon(
-    data = shap_plot, 
-    mapping = aes(x = row, ymin = min_loc, ymax = total),
-    fill = '#FF0056') +  
-  geom_line(
-    data = shap_long,
-    mapping = aes(x = row, y = value, group = name), color = 'lightgrey') +
-  coord_cartesian(ylim = c(0.33, NA)) +
-  scale_x_continuous(expand = expansion(0, 0),
-                     breaks = seq(0, 1400, 200)) +
-  # facet_grid(cols = vars(cluster %>% fct_relevel(paste('Cluster', c(3, 1, 4, 2)))),
-  #            scales = 'free', space = 'free') +
-  # facet_grid(cols = vars(cluster),
-  #            scales = 'free', space = 'free') +
+  p <- p +
+    geom_ribbon(
+      data = new_shap, aes(x = row, ymin = total, ymax = ymax), fill = '#048AE6') +
+    geom_ribbon(
+      data = new_shap, aes(x = row, ymin = ymin, ymax = total), fill = '#FF0056') +
+    geom_path(aes(x = row, y = !!sym(snp), group = 1),
+              data = new_shap, color = 'white', alpha = 0.5) +
+    geom_path(aes(x = row, y = total, group = 1), 
+              data = new_shap, color = 'white', alpha = 0.5) +
+    NULL
+}
+shap_force <- p +
+  scale_fill_identity() +
+  scale_color_identity() +
+  scale_alpha_identity() +
+  scale_x_continuous(
+    expand = expansion(0, 0), breaks = seq(0, 1400, 200)) +
   theme(panel.spacing.x = unit(0, 'mm'),
         panel.grid = element_blank()) +
-  labs(y = 'SHAP values (logit scale)', x = NULL)
+  labs(y = 'SHAP values', x = NULL)
 
 shap_force
-ggsave('figs/shap_force.png', shap_force,
+ggsave('figs/shap_force_classic.png', shap_force,
        width = 12, height = 4)
 ```
 
-
 ## resadj SHAP
-```{r}
+```{r fig.width = 12, fig.height=4}
 base_value_resadj = -0.011816386952043862
 shap_cluster <- shap_resAdj[ , c('eid', snps_resadj)] %>% 
   left_join(clusters_resAdj)
@@ -314,8 +288,6 @@ ggsave('figs/shap_force_resadj.png', shap_force,
        width = 12, height = 4)
 ```
 
-
 ```{r}
 sessioninfo::session_info()
 ```
-
