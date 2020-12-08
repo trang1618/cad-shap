@@ -55,8 +55,8 @@ feat_imp_classic <- classic_df %>%
   theme(panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank())
 feat_imp_classic
-ggsave('figs/feat_imp_classic.pdf', feat_imp_classic,
-       width = 6, height = 3)
+# ggsave('figs/feat_imp_classic.pdf', feat_imp_classic,
+#        width = 6, height = 3)
 ggsave('figs/feat_imp_classic.ps', feat_imp_classic,
        width = 6, height = 3)
 ggsave('figs/feat_imp_classic.png', feat_imp_classic,
@@ -94,8 +94,8 @@ feat_imp_resadj <- resadj_df %>%
         plot.margin = unit(c(5.5, 15.5, 5.5, 5.5), 'pt'))
 
 feat_imp_resadj
-ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
-       width = 7, height = 5)
+# ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
+#        width = 7, height = 5)
 ggsave('figs/feat_imp_resadj.ps', feat_imp_resadj,
        width = 7, height = 5)
 ggsave('figs/feat_imp_resadj.png', feat_imp_resadj,
@@ -187,6 +187,13 @@ for (snp_name in rev(snps_classic)){
               data = new_shap, color = 'white', alpha = 0.5) +
     NULL
 }
+
+annotate_df <- tribble(
+  ~x, ~y, ~label,
+  185, 0.48 , 'rs4932178',
+  900, 0.5, 'rs17636091',
+  1050, 0.465, 'rs113028686'
+)
 shap_force <- p +
   scale_fill_identity() +
   scale_color_identity() +
@@ -195,13 +202,17 @@ shap_force <- p +
     expand = expansion(0, 0), breaks = seq(0, 1400, 200)) +
   theme(panel.spacing.x = unit(0, 'mm'),
         panel.grid = element_blank()) +
-  labs(y = NULL, x = NULL)
+  labs(y = NULL, x = NULL) +
+  geom_text(data = annotate_df, 
+            aes(x = x, y = y, label = label),
+            color = 'white')
 
 shap_force
 ggsave('figs/shap_force_classic.png', shap_force,
        width = 12, height = 4)
 ggsave('figs/shap_force_classic.ps', shap_force,
        width = 12, height = 4)
+
 ```
 
 ## resadj SHAP
