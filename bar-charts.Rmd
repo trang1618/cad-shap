@@ -49,8 +49,9 @@ classic_df <- clusters_classic  %>%
 imp_snps_classic <- unique(classic_df$name)
 feat_imp_classic <- classic_df %>% 
   ggplot(aes(x = per_cluster, y = name)) +
-  geom_col(width = 0.8) +
+  geom_col(fill = 'grey50', width = 0.8) +
   facet_wrap(~ cluster, ncol = 2) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.05), add = c(0, 0))) +
   labs(x = 'Mean(|Shap value|)', y = NULL)+
   theme(panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank())
@@ -58,9 +59,9 @@ feat_imp_classic
 # ggsave('figs/feat_imp_classic.pdf', feat_imp_classic,
 #        width = 6, height = 3)
 ggsave('figs/feat_imp_classic.ps', feat_imp_classic,
-       width = 6, height = 3)
+       width = 5, height = 2.5)
 ggsave('figs/feat_imp_classic.png', feat_imp_classic,
-       width = 6, height = 3)
+       width = 5, height = 2.5)
 ```
 
 ```{r}
@@ -85,21 +86,22 @@ imp_snps_resadj <- resadj_df %>%
 feat_imp_resadj <- resadj_df %>% 
   filter(name %in% imp_snps_resadj) %>%
   ggplot(aes(x = per_cluster, y = name)) +
-  geom_col() +
+  geom_col(fill = 'grey50') +
   facet_wrap(~ cluster, ncol = 2) +
   labs(x = 'Mean(|SHAP value|)', y = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.05), add = c(0, 0))) +
   theme(panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank(),
-        panel.spacing.x = unit(7, 'mm'),
+        panel.spacing.x = unit(9, 'mm'),
         plot.margin = unit(c(5.5, 15.5, 5.5, 5.5), 'pt'))
 
 feat_imp_resadj
 # ggsave('figs/feat_imp_resadj.pdf', feat_imp_resadj,
 #        width = 7, height = 5)
 ggsave('figs/feat_imp_resadj.ps', feat_imp_resadj,
-       width = 7, height = 5)
+       width = 6, height = 4.5)
 ggsave('figs/feat_imp_resadj.png', feat_imp_resadj,
-       width = 7, height = 5)
+       width = 6, height = 4.5)
 ```
 
 ## Classic SHAP
@@ -209,9 +211,9 @@ shap_force <- p +
 
 shap_force
 ggsave('figs/shap_force_classic.png', shap_force,
-       width = 12, height = 4)
+       width = 9, height = 3)
 ggsave('figs/shap_force_classic.ps', shap_force,
-       width = 12, height = 4)
+       width = 9, height = 3)
 
 ```
 
@@ -298,9 +300,9 @@ shap_force <- p +
 
 shap_force
 ggsave('figs/shap_force_resadj.png', shap_force,
-       width = 12, height = 4)
+       width = 9, height = 3)
 ggsave('figs/shap_force_resadj.ps', shap_force,
-       width = 12, height = 4)
+       width = 9, height = 3)
 ```
 
 ```{r}
